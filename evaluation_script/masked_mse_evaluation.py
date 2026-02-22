@@ -18,6 +18,9 @@ def align_images(original, edited):
     k2, d2 = sift.detectAndCompute(gray2, None)
     if d1 is None or d2 is None:
         return None
+    # FLANN knnMatch(k=2) requires at least 2 descriptors in each set
+    # if len(d1) < 2 or len(d2) < 2:
+    #     return None
     index_params = dict(algorithm=1, trees=5)
     search_params = dict(checks=50)
     flann = cv2.FlannBasedMatcher(index_params, search_params)
@@ -73,6 +76,7 @@ def compute_scores_for_json(json_path, save_path=None):
 
     for entry in tqdm(data, desc=f"Processing {os.path.basename(json_path)}"):
         original_path = entry.get("image")
+        original_path = 'base_images/' + original_path
         edited_path = entry.get("edited_image_path")
         mask_array = entry.get("object_mask")
         if not (original_path and edited_path and mask_array) or not all(os.path.exists(p) for p in [original_path, edited_path]):

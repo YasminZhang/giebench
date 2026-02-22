@@ -41,6 +41,7 @@ def process_json(input_path):
 
     for entry in tqdm(entries, desc="Computing CLIP scores"):
         original_path = entry.get("image")
+        original_path = 'base_images/' + original_path
         edited_path = entry.get("edited_image_path")
 
         if not original_path or not edited_path or not os.path.exists(original_path) or not os.path.exists(edited_path):

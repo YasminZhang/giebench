@@ -137,22 +137,27 @@ def output_clip_ssim_scores(input_filename, output_filename):
     image_info_dict = {}
 
     # extract raw image filename, edited image filename, object mask and rest mask
+    def image_path_key(d):
+        path = d["image"].lstrip("/")
+        return d["edit_instruction"] + "base_images/" + path
+
     with open(input_filename, "r") as file:
         data = json.load(file)
         for d in data:
-            image_filename = d['image']
-            image_path = d['image']
-            edit_image_path = d['edited_image_path']
+            image_path = "base_images/" + d["image"].lstrip("/")
+            edit_image_path = d.get("edited_image_path")
 
-            if not os.path.exists(image_path) or not os.path.exists(edit_image_path):
-                print(f"Skip image: {image_path}, edit_image: {edit_image_path}")
+            if not edit_image_path or not os.path.exists(image_path) or not os.path.exists(edit_image_path):
                 continue
-            image_info_dict[d["edit_instruction"] + image_filename] = {
+            image_info_dict[image_path_key(d)] = {
                 "edit_instruction": d["edit_instruction"],
                 "image": image_path,
                 "edit_image": edit_image_path,
                 "object_mask": d["object_mask"],
             }
+
+             
+            
 
     # extract clip embedding of object area and rest area
     clip_embeddings = {}
@@ -167,6 +172,8 @@ def output_clip_ssim_scores(input_filename, output_filename):
         for i, future in enumerate(tqdm(as_completed(futures), total=len(futures))):
             emb_data = future.result()
             clip_embeddings[emb_data["edit_instruction"] + emb_data["image"]] = emb_data
+
+        
 
     clip_sims = {}
     # calculate clip similarity
@@ -184,16 +191,15 @@ def output_clip_ssim_scores(input_filename, output_filename):
             ssim_data = future.result()
             ssim_scores[ssim_data["edit_instruction"] + ssim_data["image"]] = ssim_data
 
-    # generate output content
+    # generate output content (use same key as image_info_dict: edit_instruction + base_images/...)
     output_content = []
     with open(input_filename, "r") as file:
         data = json.load(file)
         for d in data:
-            image_filename = d['image']
-            image_path = d['image']
-            if d["edit_instruction"] + image_path not in ssim_scores:
+            key = image_path_key(d)
+            if key not in ssim_scores:
                 continue
-            image_data = ssim_scores[d["edit_instruction"] + image_path]
+            image_data = ssim_scores[key]
             d["object_clip_sim"] = image_data["object_clip_sim"]
             d["rest_clip_sim"] = image_data["rest_clip_sim"]
             d["ssim_similarity_outside_mask"] = image_data["ssim_similarity_outside_mask"]

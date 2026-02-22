@@ -16,3 +16,10 @@ Shape: 224 × 224
 Rows: len(object_mask) = 224
 Columns: len(object_mask[0]) = 224
 Total elements: 50,176 (224 × 224)
+
+1080 images
+
+
+pip install ftfy regex tqdm
+pip install git+https://github.com/openai/CLIP.git
+
