@@ -30,12 +30,15 @@ def get_device(gpu_id=0):
 
 
 class FluxKontextGenerator:
-    def __init__(self, device="cuda"):
+    def __init__(self, device="cuda", cache_dir: Optional[str] = None):
         self.device = device
         print(f"Initializing Flux Kontext on device: {device}")
+        if cache_dir:
+            print(f"Using Hugging Face cache dir: {cache_dir}")
         self.pipe = FluxKontextPipeline.from_pretrained(
             MODEL_ID,
             torch_dtype=TORCH_DTYPE,
+            cache_dir=cache_dir,
         )
         self.pipe.to(device)
         if hasattr(self.pipe, "enable_attention_slicing"):
@@ -74,6 +77,7 @@ def run(
     gpu_id: int = 0,
     seed: int = 1234,
     limit: Optional[int] = None,
+    cache_dir: Optional[str] = None,
 ):
     bench_path = Path(bench_path)
     image_dir = Path(image_dir)
@@ -93,7 +97,7 @@ def run(
     print(f"Processing {total} entries.")
 
     device = get_device(gpu_id)
-    generator = FluxKontextGenerator(device=device)
+    generator = FluxKontextGenerator(device=device, cache_dir=cache_dir)
 
     for entry_id, entry in enumerate(entries):
         image_rel = entry.get("image")
@@ -120,7 +124,7 @@ def run(
             )
             edited.save(out_path)
             # Write path back into the same entry (relative path as in README)
-            entry["edited_image_path"] = f"outputs/{entry_id}.png"
+            entry["edited_image_path"] = f"{output_dir}/{entry_id}.png"
             print(f"[{entry_id}] OK -> {entry['edited_image_path']}")
         except Exception as e:
             print(f"[{entry_id}] Error: {e}")
@@ -151,7 +155,7 @@ def main():
     )
     parser.add_argument(
         "--output-dir",
-        default="outputs/flux_1_kontext_dev/",
+        default="outputs/flux_1_kontext_dev",
         help="Directory for edited images (default: outputs)",
     )
     parser.add_argument(
@@ -177,7 +181,16 @@ def main():
         default=None,
         help="Process only first N entries (for testing)",
     )
+    parser.add_argument(
+        "--cache-dir",
+        default=None,
+        help="Hugging Face model cache directory (e.g. /mnt/shared/yasmin/MODELS). Saves disk on default drive.",
+    )
     args = parser.parse_args()
+
+    if args.cache_dir:
+        os.environ["HF_HOME"] = args.cache_dir
+        os.environ["HUGGINGFACE_HUB_CACHE"] = args.cache_dir
 
     run(
         bench_path=args.bench,
@@ -187,6 +200,7 @@ def main():
         gpu_id=args.gpu,
         seed=args.seed,
         limit=args.limit,
+        cache_dir=args.cache_dir,
     )
 
 
